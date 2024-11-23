@@ -1,10 +1,9 @@
 pipeline {
     agent any
 
-    environment {
-        // Define environment variables if needed (e.g., Java version, Maven home)
-        JAVA_HOME = tool name: 'java', type: 'JDK'
-        MAVEN_HOME = tool name: 'maven', type: 'Maven'
+    tools {
+        jdk 'java'       // Make sure the Java tool is properly configured in Jenkins
+        maven 'maven'     // Make sure Maven is properly configured in Jenkins
     }
 
     stages {
@@ -19,7 +18,7 @@ pipeline {
             steps {
                 script {
                     // Clean and compile the project using Maven
-                    sh "'${MAVEN_HOME}/bin/mvn' clean install"
+                    sh 'mvn clean install'  // No need for ${MAVEN_HOME}, just use 'mvn' if Maven is in PATH
                 }
             }
         }
@@ -28,7 +27,7 @@ pipeline {
             steps {
                 script {
                     // Run unit tests using Maven
-                    sh "'${MAVEN_HOME}/bin/mvn' test"
+                    sh 'mvn test'
                 }
             }
         }
@@ -37,7 +36,7 @@ pipeline {
             steps {
                 script {
                     // Package the application (e.g., creating a .jar file)
-                    sh "'${MAVEN_HOME}/bin/mvn' package"
+                    sh 'mvn package'
                 }
             }
         }
