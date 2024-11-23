@@ -1,16 +1,21 @@
 pipeline {
     agent any
 
+    environment {
+        PROJECT_DIR = "Java-App/demo (2)/demo"  // Define project directory
+        GIT_URL = 'https://github.com/rajnages/Jenkins-Master.git'  // Define Git repository URL
+    }
+
     tools {
-        jdk 'java'        // Make sure the Java tool is properly configured in Jenkins
-        maven 'maven'      // Make sure Maven is properly configured in Jenkins
+        jdk 'java'        // Ensure the Java tool is properly configured in Jenkins
+        maven 'maven'      // Ensure Maven is properly configured in Jenkins
     }
 
     stages {
         stage('Checkout') {
             steps {
                 // Checkout the code from the repository
-                git branch: 'main', url: 'https://github.com/rajnages/Jenkins-Master.git'
+                git branch: 'main', url: GIT_URL
             }
         }
 
@@ -19,7 +24,7 @@ pipeline {
                 script {
                     // Clean and compile the project using Maven
                     sh '''
-                        cd "Java-App/demo (2)/demo"
+                        cd "${PROJECT_DIR}"
                         mvn clean install
                     '''  // Quoted the path with spaces and parentheses
                 }
@@ -27,10 +32,22 @@ pipeline {
         }
 
         stage('Test') {
-            steps {
-                script {
-                    // Run unit tests using Maven
-                    sh 'mvn test'
+            parallel {
+                stage('Unit Tests') {
+                    steps {
+                        script {
+                            // Run unit tests in parallel
+                            sh 'mvn -T 1C test'  // Use 1 thread per CPU core
+                        }
+                    }
+                }
+                stage('Integration Tests') {
+                    steps {
+                        script {
+                            // Run integration tests in parallel (if applicable)
+                            sh 'mvn -T 1C verify'  // Adjust as necessary
+                        }
+                    }
                 }
             }
         }
