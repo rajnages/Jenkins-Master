@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     tools {
-        jdk 'java'       // Make sure the Java tool is properly configured in Jenkins
-        maven 'maven'     // Make sure Maven is properly configured in Jenkins
+        jdk 'java'        // Make sure the Java tool is properly configured in Jenkins
+        maven 'maven'      // Make sure Maven is properly configured in Jenkins
     }
 
     stages {
@@ -18,7 +18,10 @@ pipeline {
             steps {
                 script {
                     // Clean and compile the project using Maven
-                    sh 'mvn clean install'  // No need for ${MAVEN_HOME}, just use 'mvn' if Maven is in PATH
+                    sh '''
+                        cd "Java-App/demo (2)/demo"
+                        mvn clean install
+                    '''  // Quoted the path with spaces and parentheses
                 }
             }
         }
@@ -45,7 +48,6 @@ pipeline {
             steps {
                 script {
                     // Deploy the application (e.g., to a server, S3, or another environment)
-                    // Replace this with your actual deployment steps
                     echo "Deploying the application..."
                     // Example: sh 'scp target/your-app.jar user@server:/path/to/deploy'
                 }
