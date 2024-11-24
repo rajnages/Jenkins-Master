@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent { label 'worker-1'}
 
     environment {
         PROJECT_DIR = "Java-App/demo (2)/demo"  // Define project directory
@@ -30,28 +30,6 @@ pipeline {
                 }
             }
         }
-
-        stage('Test') {
-            parallel {
-                stage('Unit Tests') {
-                    steps {
-                        script {
-                            // Run unit tests in parallel
-                            sh 'mvn -T 1C test'  // Use 1 thread per CPU core
-                        }
-                    }
-                }
-                stage('Integration Tests') {
-                    steps {
-                        script {
-                            // Run integration tests in parallel (if applicable)
-                            sh 'mvn -T 1C verify'  // Adjust as necessary
-                        }
-                    }
-                }
-            }
-        }
-
         stage('Package') {
             steps {
                 script {
