@@ -1,8 +1,13 @@
 pipeline {
     agent any
+
+    tools{
+        nodejs 'node'
+        docker 'docker'
+    }
     
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub')
         DOCKER_HUB_REPO = 'rajnages'  // Replace with your Docker Hub username
         DOCKER_IMAGE = 'jenkins-sample-app'
         DOCKER_TAG = "${BUILD_NUMBER}"
