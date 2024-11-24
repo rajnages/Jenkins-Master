@@ -1,16 +1,16 @@
 pipeline {
     agent any
 
-    // tools{
-    //     nodejs 'node'
-    //     jdk 'jdk8'
-    // }
+    tools {
+        nodejs 'node'
+    }
     
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
-        DOCKER_HUB_REPO = 'rajnages'  // Replace with your Docker Hub username
+        DOCKER_HUB_REPO = 'rajnages'
         DOCKER_IMAGE = 'jenkins-sample-app'
         DOCKER_TAG = "${BUILD_NUMBER}"
+        GIT_TAG = sh(returnStdout: true, script: 'git describe --tags --abbrev=0 || echo latest').trim()
     }
     
     stages {
@@ -22,23 +22,30 @@ pipeline {
         
         stage('Install Dependencies') {
             steps {
-                sh 'npm install'
+                dir('app') {  // Change to app directory
+                    sh 'npm install'
+                }
             }
         }
         
         stage('Run Tests') {
             steps {
-                sh 'npm test'
+                dir('app') {  // Change to app directory
+                    sh 'npm test'
+                }
             }
         }
         
         stage('Build Docker Image') {
             steps {
-                script {
-                    // Build with both local and Docker Hub tags
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
-                    docker.build("${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}")
-                    docker.build("${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:latest")
+                dir('app') {  // Change to app directory
+                    script {
+                        // Build with both local and Docker Hub tags
+                        docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", "-f Dockerfile .")
+                        docker.build("${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}", "-f Dockerfile .")
+                        docker.build("${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:${GIT_TAG}", "-f Dockerfile .")
+                        docker.build("${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:latest", "-f Dockerfile .")
+                    }
                 }
             }
         }
@@ -51,6 +58,7 @@ pipeline {
                     
                     // Push both tagged and latest versions
                     sh "docker push ${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    sh "docker push ${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:${GIT_TAG}"
                     sh "docker push ${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:latest"
                 }
             }
@@ -64,7 +72,7 @@ pipeline {
                     sh 'docker ps -aq --filter name=jenkins-app | xargs -r docker rm'
                     
                     // Run new container using the Docker Hub image
-                    sh "docker run -d --name jenkins-app -p 3000:3000 ${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    sh "docker run -d --name jenkins-app -p 3000:3000 ${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:${GIT_TAG}"
                 }
             }
         }
@@ -81,6 +89,7 @@ pipeline {
                 try {
                     sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG}"
                     sh "docker rmi ${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    sh "docker rmi ${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:${GIT_TAG}"
                     sh "docker rmi ${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:latest"
                 } catch (err) {
                     echo "Error cleaning up images: ${err}"
