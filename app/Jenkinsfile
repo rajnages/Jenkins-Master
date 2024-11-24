@@ -1,0 +1,86 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        DOCKER_HUB_REPO = 'rajnages'  // Replace with your Docker Hub username
+        DOCKER_IMAGE = 'jenkins-sample-app'
+        DOCKER_TAG = "${BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+        
+        stage('Run Tests') {
+            steps {
+                sh 'npm test'
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Build with both local and Docker Hub tags
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    docker.build("${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    docker.build("${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:latest")
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    // Login to Docker Hub
+                    sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+                    
+                    // Push both tagged and latest versions
+                    sh "docker push ${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    sh "docker push ${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:latest"
+                }
+            }
+        }
+        
+        stage('Deploy') {
+            steps {
+                script {
+                    // Stop existing container if it exists
+                    sh 'docker ps -q --filter name=jenkins-app | xargs -r docker stop'
+                    sh 'docker ps -aq --filter name=jenkins-app | xargs -r docker rm'
+                    
+                    // Run new container using the Docker Hub image
+                    sh "docker run -d --name jenkins-app -p 3000:3000 ${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}"
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            // Logout from Docker Hub
+            sh 'docker logout'
+        }
+        cleanup {
+            // Clean up old images to save space
+            script {
+                try {
+                    sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    sh "docker rmi ${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    sh "docker rmi ${DOCKER_HUB_REPO}/${DOCKER_IMAGE}:latest"
+                } catch (err) {
+                    echo "Error cleaning up images: ${err}"
+                }
+            }
+        }
+    }
+}
